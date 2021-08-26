@@ -1,4 +1,4 @@
-package main
+package util
 
 import (
 	"errors"
@@ -39,7 +39,7 @@ func TestValidateEnvVars(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		err := validateEnvVars(
+		err := ValidateEnvVars(
 			testCase.envType,
 			testCase.secret,
 			testCase.privateKey,

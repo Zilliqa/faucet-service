@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"faucet-service/internal/util"
 	"fmt"
 	"math"
 	"net/http"
@@ -71,29 +71,12 @@ func cors() gin.HandlerFunc {
 	}
 }
 
-func validateEnvVars(envType, secret, privKey string) error {
-	isEnvTypeValid := envType == "dev" || envType == "staging" || envType == "prod"
-
-	if !isEnvTypeValid {
-		return errors.New("ENV_TYPE is invalid")
-	}
-
-	if secret == "" {
-		return errors.New("RECAPTCHA_SECRET is invalid")
-	}
-
-	if privKey == "" {
-		return errors.New("PRIVATE_KEY is invalid")
-	}
-	return nil
-}
-
 func main() {
 	envType := os.Getenv("ENV_TYPE")
 	secret := os.Getenv("RECAPTCHA_SECRET")
 	privKey := os.Getenv("PRIVATE_KEY")
 
-	err := validateEnvVars(
+	err := util.ValidateEnvVars(
 		envType,
 		secret,
 		privKey,
