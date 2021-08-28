@@ -3,7 +3,8 @@ info:
   title: Faucet Service
   version: "1.0"
 servers:
-  - url: https://faucet.api.zilliqa.com/api/v1
+  - url: https://isolated-server-faucet.api.zilliqa.com/api/v1
+  - url: https://testnet-faucet.api.zilliqa.com/api/v1
 paths:
   /faucet:
     post:
@@ -18,25 +19,15 @@ paths:
                 address:
                   type: string
                   example: d1F9288cE6e645AB758366964D51ba5C001517d5
-                network:
-                  type: string
-                  example: isolated_server
                 token:
                   type: string
                   example: <recaptcha token>
               required:
                 - address
-                - network
                 - token
             examples:
-              Testnet:
+              example:
                 value:
-                  network: testnet
-                  address: d1F9288cE6e645AB758366964D51ba5C001517d5
-                  token: <recaptcha token>
-              IsolatedServer:
-                value:
-                  network: isolated_server
                   address: d1F9288cE6e645AB758366964D51ba5C001517d5
                   token: <recaptcha token>
       responses:
