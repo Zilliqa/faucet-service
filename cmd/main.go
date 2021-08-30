@@ -18,54 +18,21 @@
 package main
 
 import (
-	"faucet-service/internal/util"
-	"fmt"
-	"math"
+	"faucet-service/internal/faucet"
+	"faucet-service/internal/recaptcha"
+	"faucet-service/internal/zil"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
+	"github.com/Zilliqa/gozilliqa-sdk/account"
+	"github.com/Zilliqa/gozilliqa-sdk/provider"
+	"github.com/Zilliqa/gozilliqa-sdk/util"
 	"github.com/gin-gonic/gin"
+	"github.com/robfig/cron/v3"
 	log "github.com/sirupsen/logrus"
 )
-
-func logger() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		url := c.Request.URL.String()
-		start := time.Now()
-		c.Next()
-		stop := time.Since(start)
-		latency := int(math.Ceil(float64(stop.Nanoseconds()) / 1000000.0))
-		statusCode := c.Writer.Status()
-		method := c.Request.Method
-		clientIP := c.ClientIP()
-		userAgent := c.Request.UserAgent()
-		requestID := c.GetHeader("x-request-id")
-
-		entry := log.WithFields(log.Fields{
-			"status_code": statusCode,
-			"method":      method,
-			"url":         url,
-			"latency":     latency,
-			"client_iP":   clientIP,
-			"user_agent":  userAgent,
-			"request_id":  requestID,
-		})
-
-		if len(c.Errors) > 0 {
-			entry.Error(c.Errors.ByType(gin.ErrorTypePrivate).String())
-		} else {
-			msg := fmt.Sprintf("%d", statusCode)
-			if statusCode >= http.StatusInternalServerError {
-				entry.Error(msg)
-			} else if statusCode >= http.StatusBadRequest {
-				entry.Warn(msg)
-			} else {
-				entry.Info(msg)
-			}
-		}
-	}
-}
 
 func cors() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -90,16 +57,48 @@ func cors() gin.HandlerFunc {
 
 func main() {
 	envType := os.Getenv("ENV_TYPE")
-	secret := os.Getenv("RECAPTCHA_SECRET")
+	nodeURL := os.Getenv("NODE_URL")
+	chainIDStr := os.Getenv("CHAIN_ID")
+	amountInZil := os.Getenv("AMOUNT_IN_ZIL")
+	batchInterval := os.Getenv("BATCH_INTERVAL")
+	batchLimitStr := os.Getenv("BATCH_LIMIT")
+	ttlStr := os.Getenv("TTL")
 	privKey := os.Getenv("PRIVATE_KEY")
+	secret := os.Getenv("RECAPTCHA_SECRET")
 
-	err := util.ValidateEnvVars(
+	envVars := []string{
 		envType,
-		secret,
+		nodeURL,
+		chainIDStr,
+		amountInZil,
+		batchInterval,
+		batchLimitStr,
+		ttlStr,
 		privKey,
-	)
+		secret,
+	}
+	for _, envVar := range envVars {
+		if envVar == "" {
+			panic("💥Invalid environment variables")
+		}
+	}
+	chainID, err := strconv.Atoi(chainIDStr)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
+	}
+	ttl, err := strconv.Atoi(ttlStr)
+	if err != nil {
+		panic(err)
+	}
+	batchLimit, err := strconv.Atoi(batchLimitStr)
+	if err != nil {
+		panic(err)
+	}
+
+	// Create the DB schema
+	mdb, err := faucet.NewMemDB("req")
+	if err != nil {
+		panic(err)
 	}
 
 	// Use release mode for staging and prod
@@ -107,11 +106,95 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	log.WithFields(log.Fields{"EnvType": envType}).Info("Start Faucet Service")
+	logger := log.WithFields(log.Fields{"EnvType": envType})
+
+	wallet := account.NewWallet()
+	wallet.AddByPrivateKey(privKey)
+	curProvider := provider.NewProvider(nodeURL)
+	msgVersion := 1
+	version := strconv.FormatInt(int64(util.Pack(chainID, msgVersion)), 10)
+
+	logger.Infof("🚀NodeURL:%v ChainID:%v Amount:%v BatchInterval:%v",
+		nodeURL,
+		chainID,
+		amountInZil,
+		batchInterval,
+	)
+
+	isTxConfirmed := zil.GetIsTxConfirmedFn(curProvider)
+	sendBatchTx := zil.SendBatchTxFn(
+		curProvider,
+		wallet,
+		amountInZil,
+		version,
+	)
+
+	// Funcs are invoked in their own goroutine, asynchronously.
+	c := cron.New()
+	c.AddFunc("@every 10s", func() {
+		total, totalReq, totalTx, err := mdb.Scan()
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("📡Total:%d Req:%d Tx:%d",
+			total,
+			totalReq,
+			totalTx,
+		)
+	})
+
+	c.AddFunc("@every "+batchInterval, func() {
+		// Deletes the confirmed items which are no longer needed.
+		countConfirmed, err := mdb.Confirm(isTxConfirmed)
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("✅Confirmed:%d", countConfirmed)
+
+		// Reduce stored data volumes by expiring the old items.
+		// which are either pending or unconfirmed.
+		now := time.Now().Unix()
+		countExpired, err := mdb.Expire(now, ttl)
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("⌛️Expired:%d", countExpired)
+
+		// Retry unconfirmed items by removing the old tx id.
+		// Note that it's at-least-once delivery.
+		countRetry, err := mdb.Retry()
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("🔸Retry:%d ", countRetry)
+
+		// Send batch transactions
+		countBatch, err := mdb.Batch(sendBatchTx, batchLimit)
+		if err != nil {
+			logger.Error(err)
+		}
+		logger.Infof("🔹Batch:%d", countBatch)
+	})
+	c.Start()
 
 	r := gin.New()
-	r.Use(cors(), logger(), gin.Recovery())
+	r.Use(cors(), gin.Recovery())
+
 	r.GET("/livez", func(c *gin.Context) { c.String(http.StatusOK, "") })
+
+	verifyToken := recaptcha.VerifyToken
+	// Mock verifyToken for dev
+	if envType == "dev" {
+		verifyToken = func(l *log.Entry, url string) error {
+			return nil
+		}
+	}
+
+	r.POST("api/v1/faucet", faucet.Controller(
+		secret,
+		verifyToken,
+		mdb.Insert,
+	))
 
 	r.Run("0.0.0.0:8080")
 }
