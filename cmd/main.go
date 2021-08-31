@@ -121,8 +121,8 @@ func main() {
 		batchInterval,
 	)
 
-	confirmBatchTx := zil.GetConfirmBatchTxFn(curProvider)
-	sendBatchTx := zil.SendBatchTxFn(
+	batchConfirmTx := zil.NewBatchConfirmTxFn(curProvider)
+	batchSendTx := zil.NewBatchSendTxFn(
 		curProvider,
 		wallet,
 		amountInZil,
@@ -148,7 +148,7 @@ func main() {
 
 		t0 := time.Now()
 		// Deletes the confirmed items which are no longer needed.
-		countConfirmed, err := mdb.Confirm(confirmBatchTx, batchLimit)
+		countConfirmed, err := mdb.Confirm(batchConfirmTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
 			return
@@ -177,8 +177,8 @@ func main() {
 		logger.Infof("🔸Retry:%d (%v)", countRetry, time.Since(t0))
 
 		t0 = time.Now()
-		// Send batch transactions
-		countBatch, err := mdb.Batch(sendBatchTx, batchLimit)
+		// Send transactions
+		countBatch, err := mdb.Send(batchSendTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
 			return

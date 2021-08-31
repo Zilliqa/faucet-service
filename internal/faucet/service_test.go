@@ -121,8 +121,8 @@ func TestConfirm(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	// Mock confirmBatchTx()
-	confirmBatchTx := func(txIDs []string) ([]bool, error) {
+	// Mock batchConfirmTx()
+	batchConfirmTx := func(txIDs []string) ([]bool, error) {
 		result := []bool{}
 		for range txIDs {
 			result = append(result, true)
@@ -130,7 +130,7 @@ func TestConfirm(t *testing.T) {
 		return result, nil
 	}
 
-	count, _ := mdb.Confirm(confirmBatchTx, 10)
+	count, _ := mdb.Confirm(batchConfirmTx, 10)
 	if count != 0 {
 		t.Errorf("%#v", count)
 	}
@@ -165,7 +165,7 @@ func TestConfirm(t *testing.T) {
 		mdb.Insert(v)
 	}
 
-	mdb.Confirm(confirmBatchTx, 2)
+	mdb.Confirm(batchConfirmTx, 2)
 
 	testCases := []struct {
 		items     []*FundRequest
@@ -365,7 +365,7 @@ func TestBatchErr(t *testing.T) {
 		return nil, errors.New("Negative Testing")
 	}
 
-	_, err = mdb.Batch(sendBatchTxErr, 10)
+	_, err = mdb.Send(sendBatchTxErr, 10)
 	if err.Error() != "Negative Testing" {
 		t.Errorf("%#v", err.Error())
 	}
@@ -409,7 +409,7 @@ func TestBatchNoop(t *testing.T) {
 		return &txIDs, nil
 	}
 
-	mdb.Batch(sendBatchTx, 10)
+	mdb.Send(sendBatchTx, 10)
 
 	testCases := []struct {
 		items     []*FundRequest
@@ -481,7 +481,7 @@ func TestBatch(t *testing.T) {
 		}
 		return &txIDs, nil
 	}
-	mdb.Batch(sendBatchTx, 2)
+	mdb.Send(sendBatchTx, 2)
 
 	testCases := []struct {
 		items     []*FundRequest

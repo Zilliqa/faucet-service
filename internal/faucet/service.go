@@ -111,7 +111,7 @@ func (mdb *MDB) Scan() (int, int, int, error) {
 }
 
 func (mdb *MDB) Confirm(
-	confirmBatchTx func([]string) ([]bool, error),
+	batchConfirmTx func([]string) ([]bool, error),
 	batchLimit int,
 ) (int, error) {
 	db := mdb.DB
@@ -141,7 +141,7 @@ func (mdb *MDB) Confirm(
 		return count, nil
 	}
 
-	result, err := confirmBatchTx(txIDs)
+	result, err := batchConfirmTx(txIDs)
 	if err != nil {
 		txn.Abort()
 		return count, err
@@ -223,7 +223,7 @@ func (mdb *MDB) Retry() (int, error) {
 	return count, nil
 }
 
-func (mdb *MDB) Batch(
+func (mdb *MDB) Send(
 	sendBatchTx func([]*FundRequest) (*[]string, error),
 	batchLimit int,
 ) (int, error) {
