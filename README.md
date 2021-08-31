@@ -1,3 +1,5 @@
+[![CI](https://github.com/Zilliqa/faucet-service/actions/workflows/ci.yaml/badge.svg)](https://github.com/Zilliqa/faucet-service/actions/workflows/ci.yaml)
+
 # faucet-service
 
 ## Prerequisites
