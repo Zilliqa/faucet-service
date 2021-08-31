@@ -130,23 +130,29 @@ func TestConfirm(t *testing.T) {
 		return result, nil
 	}
 
-	count, _ := mdb.Confirm(confirmBatchTx)
+	count, _ := mdb.Confirm(confirmBatchTx, 10)
 	if count != 0 {
 		t.Errorf("%#v", count)
 	}
 
 	samples := []*FundRequest{
 		{
+			ID:        "1e1413cc-f604-44db-969d-eb3b40fea4a0",
+			CreatedAt: "2021-08-29T04:00:07Z",
+			Address:   "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
+			TxID:      "b56281dc5dd8b44f37fc44bb12d3cc170616eeef121abd364369b15b9b8473a1",
+		},
+		{
 			ID:        "1e1413cc-f604-44db-969d-eb3b40fea4a1",
 			CreatedAt: "2021-08-29T04:00:07Z",
 			Address:   "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
-			TxID:      "b56281dc5dd8b44f37fc44bb12d3cc170616eeef121abd364369b15b9b8473a3",
+			TxID:      "b56281dc5dd8b44f37fc44bb12d3cc170616eeef121abd364369b15b9b8473a2",
 		},
 		{
 			ID:        "22db01c2-2e3b-4ec2-9ce7-77f0372a50b2",
 			CreatedAt: "2021-08-29T04:00:07Z",
 			Address:   "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
-			TxID:      "9bb742ccb83de0689fee2e8f7967ced7e0d60f1577d94a08c770e8e49838e187",
+			TxID:      "9bb742ccb83de0689fee2e8f7967ced7e0d60f1577d94a08c770e8e49838e183",
 		},
 		{
 			ID:        "1e1413cc-f604-44db-969d-eb3b40fea4a3",
@@ -159,7 +165,7 @@ func TestConfirm(t *testing.T) {
 		mdb.Insert(v)
 	}
 
-	mdb.Confirm(confirmBatchTx)
+	mdb.Confirm(confirmBatchTx, 2)
 
 	testCases := []struct {
 		items     []*FundRequest
@@ -170,9 +176,9 @@ func TestConfirm(t *testing.T) {
 	}{
 		{
 			[]*FundRequest{},
+			2,
 			1,
 			1,
-			0,
 			nil,
 		},
 	}
