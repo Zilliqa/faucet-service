@@ -25,12 +25,19 @@ import (
 	"github.com/Zilliqa/gozilliqa-sdk/transaction"
 )
 
-func GetIsTxConfirmedFn(
+func GetConfirmBatchTxFn(
 	provider *provider.Provider,
-) func(string) bool {
-	return func(txID string) bool {
-		_, err := provider.GetTransaction(txID)
-		return err == nil
+) func([]string) ([]bool, error) {
+	return func(txIDs []string) ([]bool, error) {
+		responses, err := provider.GetTransactionBatch(txIDs)
+		if err != nil {
+			return nil, err
+		}
+		result := []bool{}
+		for _, v := range responses {
+			result = append(result, v.Receipt.Accept)
+		}
+		return result, nil
 	}
 }
 

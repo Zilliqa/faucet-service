@@ -121,7 +121,7 @@ func main() {
 		batchInterval,
 	)
 
-	isTxConfirmed := zil.GetIsTxConfirmedFn(curProvider)
+	confirmBatchTx := zil.GetConfirmBatchTxFn(curProvider)
 	sendBatchTx := zil.SendBatchTxFn(
 		curProvider,
 		wallet,
@@ -135,6 +135,7 @@ func main() {
 		total, totalReq, totalTx, err := mdb.Scan()
 		if err != nil {
 			logger.Error(err)
+			return
 		}
 		logger.Infof("📡Total:%d Req:%d Tx:%d",
 			total,
@@ -144,36 +145,46 @@ func main() {
 	})
 
 	c.AddFunc("@every "+batchInterval, func() {
+
+		t0 := time.Now()
 		// Deletes the confirmed items which are no longer needed.
-		countConfirmed, err := mdb.Confirm(isTxConfirmed)
+		countConfirmed, err := mdb.Confirm(confirmBatchTx)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("✅Confirmed:%d", countConfirmed)
+		logger.Infof("✅Confirmed:%d (%v)", countConfirmed, time.Since(t0))
 
+		t0 = time.Now()
 		// Reduce stored data volumes by expiring the old items.
 		// which are either pending or unconfirmed.
 		now := time.Now().Unix()
 		countExpired, err := mdb.Expire(now, ttl)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("⌛️Expired:%d", countExpired)
+		logger.Infof("⌛️Expired:%d (%v)", countExpired, time.Since(t0))
 
+		t0 = time.Now()
 		// Retry unconfirmed items by removing the old tx id.
 		// Note that it's at-least-once delivery.
 		countRetry, err := mdb.Retry()
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("🔸Retry:%d ", countRetry)
+		logger.Infof("🔸Retry:%d (%v)", countRetry, time.Since(t0))
 
+		t0 = time.Now()
 		// Send batch transactions
 		countBatch, err := mdb.Batch(sendBatchTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("🔹Batch:%d", countBatch)
+		logger.Infof("🔹Batch:%d (%v)", countBatch, time.Since(t0))
+
 	})
 	c.Start()
 
