@@ -110,7 +110,10 @@ func (mdb *MDB) Scan() (int, int, int, error) {
 	return total, totalReq, totalTx, nil
 }
 
-func (mdb *MDB) Confirm(confirmBatchTx func([]string) ([]bool, error)) (int, error) {
+func (mdb *MDB) Confirm(
+	confirmBatchTx func([]string) ([]bool, error),
+	batchLimit int,
+) (int, error) {
 	db := mdb.DB
 	tableName := mdb.TableName
 
@@ -124,6 +127,9 @@ func (mdb *MDB) Confirm(confirmBatchTx func([]string) ([]bool, error)) (int, err
 	reqs := []*FundRequest{}
 	txIDs := []string{}
 	for obj := it.Next(); obj != nil; obj = it.Next() {
+		if len(txIDs) >= batchLimit {
+			break
+		}
 		cur := obj.(*FundRequest)
 		if cur.TxID != "" {
 			reqs = append(reqs, cur)

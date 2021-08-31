@@ -148,7 +148,7 @@ func main() {
 
 		t0 := time.Now()
 		// Deletes the confirmed items which are no longer needed.
-		countConfirmed, err := mdb.Confirm(confirmBatchTx)
+		countConfirmed, err := mdb.Confirm(confirmBatchTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
 			return
