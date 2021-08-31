@@ -121,6 +121,20 @@ func TestConfirm(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
+	// Mock confirmBatchTx()
+	confirmBatchTx := func(txIDs []string) ([]bool, error) {
+		result := []bool{}
+		for range txIDs {
+			result = append(result, true)
+		}
+		return result, nil
+	}
+
+	count, _ := mdb.Confirm(confirmBatchTx)
+	if count != 0 {
+		t.Errorf("%#v", count)
+	}
+
 	samples := []*FundRequest{
 		{
 			ID:        "1e1413cc-f604-44db-969d-eb3b40fea4a1",
@@ -145,13 +159,7 @@ func TestConfirm(t *testing.T) {
 		mdb.Insert(v)
 	}
 
-	// Mock isConfirmed() which checks if it has txid
-	// Therefore, we can expect Confirm() will delete
-	// the items with txid
-	isConfirmed := func(txid string) bool {
-		return txid != ""
-	}
-	mdb.Confirm(isConfirmed)
+	mdb.Confirm(confirmBatchTx)
 
 	testCases := []struct {
 		items     []*FundRequest
