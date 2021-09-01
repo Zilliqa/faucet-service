@@ -226,16 +226,15 @@ func main() {
 
 	r.GET("/livez", func(c *gin.Context) { c.String(http.StatusOK, "") })
 
-	verifyToken := recaptcha.VerifyToken
+	verifyToken := recaptcha.Verifier(secret)
 	// Mock verifyToken for dev
 	if envType == "dev" {
-		verifyToken = func(l *log.Entry, url string) error {
+		verifyToken = func(l *log.Entry, x, y string) error {
 			return nil
 		}
 	}
 
 	r.POST("api/v1/faucet", faucet.Controller(
-		secret,
 		verifyToken,
 		mdb.Insert,
 	))
