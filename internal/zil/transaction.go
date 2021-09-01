@@ -35,7 +35,7 @@ func NewBatchConfirmTxFn(
 		}
 		result := []bool{}
 		for _, v := range responses {
-			result = append(result, v.Receipt.Accept)
+			result = append(result, v.Receipt.Success)
 		}
 		return result, nil
 	}
