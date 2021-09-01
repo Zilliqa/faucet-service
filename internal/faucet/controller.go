@@ -69,7 +69,7 @@ func Controller(
 			log.Fields{
 				"request_id": requestID,
 				"remote_ip":  remoteIP,
-				"userAgent":  userAgent,
+				"user_agent": userAgent,
 			},
 		)
 
