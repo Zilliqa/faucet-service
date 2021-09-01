@@ -79,6 +79,7 @@ func Verifier(secret string) func(*log.Entry, string, string) error {
 		if err != nil {
 			return err
 		}
+		logger.Info("recaptcha body: ", res)
 
 		if !res.Success {
 			errorCodes := strings.Join(res.ErrorCodes, ",")
