@@ -25,16 +25,23 @@ import (
 	"github.com/Zilliqa/gozilliqa-sdk/transaction"
 )
 
-func GetIsTxConfirmedFn(
+func NewBatchConfirmTxFn(
 	provider *provider.Provider,
-) func(string) bool {
-	return func(txID string) bool {
-		_, err := provider.GetTransaction(txID)
-		return err == nil
+) func([]string) ([]bool, error) {
+	return func(txIDs []string) ([]bool, error) {
+		responses, err := provider.GetTransactionBatch(txIDs)
+		if err != nil {
+			return nil, err
+		}
+		result := []bool{}
+		for _, v := range responses {
+			result = append(result, v.Receipt.Success)
+		}
+		return result, nil
 	}
 }
 
-func SendBatchTxFn(
+func NewBatchSendTxFn(
 	provider *provider.Provider,
 	wallet *account.Wallet,
 	amountInZil string,
@@ -66,13 +73,13 @@ func SendBatchTxFn(
 		if err != nil {
 			return nil, err
 		}
-		batchSendingResult, err := wallet.SendBatchOneGo(txs, *provider)
+		result, err := wallet.SendBatchOneGo(txs, *provider)
 		if err != nil {
 			return nil, err
 		}
 
 		txIDs := []string{}
-		for _, v := range batchSendingResult {
+		for _, v := range result {
 			txIDs = append(txIDs, v.Hash)
 		}
 		return &txIDs, nil

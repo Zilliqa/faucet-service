@@ -55,6 +55,12 @@ func cors() gin.HandlerFunc {
 	}
 }
 
+const ScanAction = "SCAN"
+const ConfirmAction = "CONFIRM"
+const ExpireAction = "EXPIRE"
+const RetryAction = "RETRY"
+const SendAction = "SEND"
+
 func main() {
 	envType := os.Getenv("ENV_TYPE")
 	nodeURL := os.Getenv("NODE_URL")
@@ -106,7 +112,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 
-	logger := log.WithFields(log.Fields{"EnvType": envType})
+	logger := log.WithFields(log.Fields{"env_type": envType})
 
 	wallet := account.NewWallet()
 	wallet.AddByPrivateKey(privKey)
@@ -121,8 +127,8 @@ func main() {
 		batchInterval,
 	)
 
-	isTxConfirmed := zil.GetIsTxConfirmedFn(curProvider)
-	sendBatchTx := zil.SendBatchTxFn(
+	batchConfirmTx := zil.NewBatchConfirmTxFn(curProvider)
+	batchSendTx := zil.NewBatchSendTxFn(
 		curProvider,
 		wallet,
 		amountInZil,
@@ -132,11 +138,20 @@ func main() {
 	// Funcs are invoked in their own goroutine, asynchronously.
 	c := cron.New()
 	c.AddFunc("@every 10s", func() {
+		t0 := time.Now()
 		total, totalReq, totalTx, err := mdb.Scan()
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("📡Total:%d Req:%d Tx:%d",
+		elapsed := time.Since(t0).Milliseconds()
+		logger.WithFields(log.Fields{
+			"action":    ScanAction,
+			"duration":  elapsed,
+			"count":     total,
+			"count_req": totalReq,
+			"count_tx":  totalTx,
+		}).Infof("📡Total:%d Req:%d Tx:%d",
 			total,
 			totalReq,
 			totalTx,
@@ -144,36 +159,65 @@ func main() {
 	})
 
 	c.AddFunc("@every "+batchInterval, func() {
+
+		t0 := time.Now()
 		// Deletes the confirmed items which are no longer needed.
-		countConfirmed, err := mdb.Confirm(isTxConfirmed)
+		countConfirmed, err := mdb.Confirm(batchConfirmTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("✅Confirmed:%d", countConfirmed)
+		duration := time.Since(t0).Milliseconds()
+		logger.WithFields(log.Fields{
+			"action":   ConfirmAction,
+			"duration": duration,
+			"count":    countConfirmed,
+		}).Infof("✅Confirmed:%d", countConfirmed)
 
+		t0 = time.Now()
 		// Reduce stored data volumes by expiring the old items.
 		// which are either pending or unconfirmed.
-		now := time.Now().Unix()
-		countExpired, err := mdb.Expire(now, ttl)
+		countExpired, err := mdb.Expire(t0.Unix(), ttl)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("⌛️Expired:%d", countExpired)
+		duration = time.Since(t0).Milliseconds()
+		logger.WithFields(log.Fields{
+			"action":   ExpireAction,
+			"duration": duration,
+			"count":    countExpired,
+		}).Infof("⌛️Expired:%d", countExpired)
 
+		t0 = time.Now()
 		// Retry unconfirmed items by removing the old tx id.
 		// Note that it's at-least-once delivery.
 		countRetry, err := mdb.Retry()
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("🔸Retry:%d ", countRetry)
+		duration = time.Since(t0).Milliseconds()
+		logger.WithFields(log.Fields{
+			"action":   RetryAction,
+			"duration": duration,
+			"count":    countRetry,
+		}).Infof("🔸Retry:%d", countRetry)
 
-		// Send batch transactions
-		countBatch, err := mdb.Batch(sendBatchTx, batchLimit)
+		t0 = time.Now()
+		// Send transactions
+		countBatch, err := mdb.Send(batchSendTx, batchLimit)
 		if err != nil {
 			logger.Error(err)
+			return
 		}
-		logger.Infof("🔹Batch:%d", countBatch)
+		duration = time.Since(t0).Milliseconds()
+		logger.WithFields(log.Fields{
+			"action":   SendAction,
+			"duration": duration,
+			"count":    countBatch,
+		}).Infof("🔹Batch:%d", countBatch)
+
 	})
 	c.Start()
 

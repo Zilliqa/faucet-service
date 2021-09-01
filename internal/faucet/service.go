@@ -110,7 +110,10 @@ func (mdb *MDB) Scan() (int, int, int, error) {
 	return total, totalReq, totalTx, nil
 }
 
-func (mdb *MDB) Confirm(isConfirmed func(string) bool) (int, error) {
+func (mdb *MDB) Confirm(
+	batchConfirmTx func([]string) ([]bool, error),
+	batchLimit int,
+) (int, error) {
 	db := mdb.DB
 	tableName := mdb.TableName
 
@@ -121,13 +124,36 @@ func (mdb *MDB) Confirm(isConfirmed func(string) bool) (int, error) {
 		return count, err
 	}
 
+	reqs := []*FundRequest{}
+	txIDs := []string{}
 	for obj := it.Next(); obj != nil; obj = it.Next() {
+		if len(txIDs) >= batchLimit {
+			break
+		}
 		cur := obj.(*FundRequest)
-		if isConfirmed(cur.TxID) {
-			txn.Delete(tableName, cur)
+		if cur.TxID != "" {
+			reqs = append(reqs, cur)
+			txIDs = append(txIDs, cur.TxID)
+		}
+	}
+	if len(txIDs) == 0 {
+		txn.Abort()
+		return count, nil
+	}
+
+	result, err := batchConfirmTx(txIDs)
+	if err != nil {
+		txn.Abort()
+		return count, err
+	}
+
+	for i, v := range result {
+		if v {
+			txn.Delete(tableName, reqs[i])
 			count++
 		}
 	}
+
 	txn.Commit()
 	return count, nil
 }
@@ -140,6 +166,7 @@ func (mdb *MDB) Expire(now int64, ttl int) (int, error) {
 	txn := db.Txn(true)
 	it, err := txn.Get(tableName, "id")
 	if err != nil {
+		txn.Abort()
 		return count, err
 	}
 
@@ -167,6 +194,7 @@ func (mdb *MDB) Retry() (int, error) {
 	txn := db.Txn(true)
 	it, err := txn.Get(tableName, "id")
 	if err != nil {
+		txn.Abort()
 		return count, err
 	}
 
@@ -195,7 +223,7 @@ func (mdb *MDB) Retry() (int, error) {
 	return count, nil
 }
 
-func (mdb *MDB) Batch(
+func (mdb *MDB) Send(
 	sendBatchTx func([]*FundRequest) (*[]string, error),
 	batchLimit int,
 ) (int, error) {
@@ -206,6 +234,7 @@ func (mdb *MDB) Batch(
 	txn := db.Txn(true)
 	it, err := txn.Get(tableName, "id")
 	if err != nil {
+		txn.Abort()
 		return count, err
 	}
 

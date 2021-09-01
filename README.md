@@ -61,7 +61,7 @@ The cron job runs the following 4 functions:
 - `Confirm()`
 - `Expire()`
 - `Retry()`
-- `Batch()`
+- `Send()`
 
 The following table contains sample items and we will see how the above 4 functions change the table.
 
@@ -142,7 +142,7 @@ After `Expire()` the table will be the following:
 
 Note that the items with ⌛️ status have been deleted.
 
-#### 3. `Retry()` Retries unconfirmed items by removing the old tx id.
+#### 3. `Retry()` Removes the old tx id.
 
 | Status | ID        | CreatedAt              | Address     | TxID      |
 | :----: | --------- | ---------------------- | ----------- | --------- |
@@ -164,7 +164,7 @@ After `Retry()` the table will be the following:
 
 Note that the items doesn't have the tx ID.
 
-#### 4. `Batch()` Sends batch transactions.
+#### 4. `Send()` Creates transactions.
 
 | Status | ID            | CreatedAt            | Address     | TxID |
 | :----: | ------------- | -------------------- | ----------- | ---- |
@@ -173,7 +173,7 @@ Note that the items doesn't have the tx ID.
 |   📦   | `5e14...a4a6` | 2021-08-29T02:04:07Z | `0x...9e79` |      |
 |   📦   | `5e14...a4a7` | 2021-08-29T02:05:07Z | `0x...9e79` |      |
 
-After `Batch()` the table will be the following:
+After `Send()` the table will be the following:
 
 | Status | ID            | CreatedAt            | Address     | TxID      |
 | :----: | ------------- | -------------------- | ----------- | --------- |
