@@ -127,8 +127,8 @@ func main() {
 		batchInterval,
 	)
 
-	batchConfirmTx := zil.NewBatchConfirmTxFn(curProvider)
-	batchSendTx := zil.NewBatchSendTxFn(
+	batchConfirmTx := zil.BatchConfirmer(curProvider)
+	batchSendTx := zil.BatchSender(
 		curProvider,
 		wallet,
 		amountInZil,
