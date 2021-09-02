@@ -78,10 +78,13 @@ The following table contains sample items and we will see how the above 4 functi
 
 Let's assume the following:
 
-- batch interval is every `5 min`
-- estimated confirmation time is around `3 min`
-- Time To Live: `30 min`
-- Now is `2021-01-01T00:31:07Z`
+- batch interval is `5 min`.
+- estimated confirmation time is `3 min`.
+- The batch interval is always longer than the estimated confirmation time.
+- Time To Live is `30 min`.
+- Now is `2021-01-01T00:31:07Z`.
+- It's OK to remove the expired messages.
+- It's OK to process a message more than once.
 
 Also, note that each item has one of the following status:
 
@@ -155,32 +158,32 @@ Note that it's at-least-once delivery.
 
 After `Retry()` the table will be the following:
 
-| Status | ID            | CreatedAt            | Address     | TxID |
-| :----: | ------------- | -------------------- | ----------- | ---- |
-|   📦   | `5e14...a4a4` | 2021-08-29T02:09:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a5` | 2021-08-29T02:10:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a6` | 2021-08-29T02:04:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a7` | 2021-08-29T02:05:07Z | `0x...9e79` |      |
+| Status | ID        | CreatedAt              | Address     | TxID |
+| :----: | --------- | ---------------------- | ----------- | ---- |
+|   📦   | `...a4a4` | `2021-08-29T02:09:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a5` | `2021-08-29T02:10:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a6` | `2021-01-01T00:25:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a7` | `2021-01-01T00:26:07Z` | `0x...9e79` |      |
 
 Note that the items doesn't have the tx ID.
 
 #### 4. `Send()` Creates transactions.
 
-| Status | ID            | CreatedAt            | Address     | TxID |
-| :----: | ------------- | -------------------- | ----------- | ---- |
-|   📦   | `5e14...a4a4` | 2021-08-29T02:09:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a5` | 2021-08-29T02:10:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a6` | 2021-08-29T02:04:07Z | `0x...9e79` |      |
-|   📦   | `5e14...a4a7` | 2021-08-29T02:05:07Z | `0x...9e79` |      |
+| Status | ID        | CreatedAt              | Address     | TxID |
+| :----: | --------- | ---------------------- | ----------- | ---- |
+|   📦   | `...a4a4` | `2021-08-29T02:09:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a5` | `2021-08-29T02:10:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a6` | `2021-01-01T00:25:07Z` | `0x...9e79` |      |
+|   📦   | `...a4a7` | `2021-01-01T00:26:07Z` | `0x...9e79` |      |
 
 After `Send()` the table will be the following:
 
-| Status | ID            | CreatedAt            | Address     | TxID      |
-| :----: | ------------- | -------------------- | ----------- | --------- |
-|   👁    | `5e14...a4a4` | 2021-08-29T02:09:07Z | `0x...9e79` | `...0e10` |
-|   👁    | `5e14...a4a5` | 2021-08-29T02:10:07Z | `0x...9e79` | `...0e11` |
-|   👁    | `5e14...a4a6` | 2021-08-29T02:04:07Z | `0x...9e79` | `...0e12` |
-|   👁    | `5e14...a4a7` | 2021-08-29T02:05:07Z | `0x...9e79` | `...0e13` |
+| Status | ID        | CreatedAt              | Address     | TxID      |
+| :----: | --------- | ---------------------- | ----------- | --------- |
+|   👁    | `...a4a4` | `2021-08-29T02:09:07Z` | `0x...9e79` | `...0e10` |
+|   👁    | `...a4a5` | `2021-08-29T02:10:07Z` | `0x...9e79` | `...0e11` |
+|   👁    | `...a4a6` | `2021-01-01T00:25:07Z` | `0x...9e79` | `...0e12` |
+|   👁    | `...a4a7` | `2021-01-01T00:26:07Z` | `0x...9e79` | `...0e13` |
 
 Note that each items have the new tx ID.
 
