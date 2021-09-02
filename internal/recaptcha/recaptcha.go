@@ -51,33 +51,41 @@ type Response struct {
 	// https://developers.google.com/recaptcha/docs/verify#error_code_reference
 }
 
-// VerifyToken verifies recaptcha token
-func VerifyToken(logger *log.Entry, url string) error {
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err
+// Verifier returns verify function
+func Verifier(secret string) func(*log.Entry, string, string) error {
+	return func(logger *log.Entry, token string, remoteIP string) error {
+		url := "https://www.google.com/recaptcha/api/siteverify" +
+			"?secret=" + secret +
+			"&response=" + token +
+			"&remoteip=" + remoteIP
+
+		req, err := http.NewRequest(http.MethodPost, url, nil)
+		if err != nil {
+			return err
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return err
+		}
+
+		defer resp.Body.Close()
+		logger.Info("recaptcha status code: ", resp.StatusCode)
+
+		body, _ := ioutil.ReadAll(resp.Body)
+		res := Response{}
+		err = json.Unmarshal(body, &res)
+		if err != nil {
+			return err
+		}
+		logger.Info("recaptcha body: ", res)
+
+		if !res.Success {
+			errorCodes := strings.Join(res.ErrorCodes, ",")
+			return errors.New(errorCodes)
+		}
+
+		return nil
 	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	logger.Info("recaptcha status code: ", resp.StatusCode)
-
-	body, _ := ioutil.ReadAll(resp.Body)
-	res := Response{}
-	err = json.Unmarshal(body, &res)
-	if err != nil {
-		return err
-	}
-
-	if !res.Success {
-		errorCodes := strings.Join(res.ErrorCodes, ",")
-		return errors.New(errorCodes)
-	}
-
-	return nil
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/Zilliqa/gozilliqa-sdk/transaction"
 )
 
-func NewBatchConfirmTxFn(
+func BatchConfirmer(
 	provider *provider.Provider,
 ) func([]string) ([]bool, error) {
 	return func(txIDs []string) ([]bool, error) {
@@ -41,7 +41,7 @@ func NewBatchConfirmTxFn(
 	}
 }
 
-func NewBatchSendTxFn(
+func BatchSender(
 	provider *provider.Provider,
 	wallet *account.Wallet,
 	amountInZil string,

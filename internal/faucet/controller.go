@@ -37,8 +37,7 @@ type BodyParams struct {
 }
 
 func Controller(
-	secret string,
-	verify func(*log.Entry, string) error,
+	verify func(*log.Entry, string, string) error,
 	insert func(*FundRequest) error,
 ) func(c *gin.Context) {
 	return func(c *gin.Context) {
@@ -73,14 +72,9 @@ func Controller(
 			},
 		)
 
-		verificationURL := "https://www.google.com/recaptcha/api/siteverify" +
-			"?secret=" + secret +
-			"&response=" + body.Token +
-			"&remoteip=" + remoteIP
-
 		reqLogger.Info("body: ", body)
 
-		err := verify(reqLogger, verificationURL)
+		err := verify(reqLogger, body.Token, remoteIP)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

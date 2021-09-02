@@ -29,10 +29,10 @@ import (
 )
 
 func TestControler(t *testing.T) {
-	verifyTokenNoop := func(l *log.Entry, url string) error {
+	verifyTokenNoop := func(l *log.Entry, token string, remoteIP string) error {
 		return nil
 	}
-	verifyTokenErr := func(l *log.Entry, url string) error {
+	verifyTokenErr := func(l *log.Entry, token string, remoteIP string) error {
 		return errors.New("Negative Testing")
 	}
 	insertNoop := func(*FundRequest) error {
@@ -44,7 +44,7 @@ func TestControler(t *testing.T) {
 
 	testCases := []struct {
 		body           string
-		mockVerify     func(l *log.Entry, url string) error
+		mockVerify     func(*log.Entry, string, string) error
 		mockInsert     func(*FundRequest) error
 		wantStatusCode int
 	}{
@@ -108,7 +108,6 @@ func TestControler(t *testing.T) {
 		setupServer := func() *gin.Engine {
 			r := gin.Default()
 			r.POST("/test", Controller(
-				"some",
 				testCase.mockVerify,
 				testCase.mockInsert,
 			))
