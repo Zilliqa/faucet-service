@@ -19,6 +19,7 @@ package faucet
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -43,26 +44,34 @@ func TestControler(t *testing.T) {
 	}
 
 	testCases := []struct {
-		body           string
+		body           BodyParams
 		mockVerify     func(*log.Entry, string, string) error
 		mockInsert     func(*FundRequest) error
 		wantStatusCode int
 	}{
 		// 400 for invalid body
 		{
-			"{\"address\": \"\"}",
+			BodyParams{
+				Address: "",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			400,
 		},
 		{
-			"{\"address\": \"\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			400,
 		},
 		{
-			"{\"address\": \"A09e79\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "A09e79",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			400,
@@ -70,7 +79,10 @@ func TestControler(t *testing.T) {
 
 		// 400 for invalid token
 		{
-			"{\"address\": \"0x0334995e2CFc53CF785C554839F6e845A3A09e79\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
+				Token:   "test",
+			},
 			verifyTokenErr,
 			insertNoop,
 			http.StatusBadRequest,
@@ -78,7 +90,10 @@ func TestControler(t *testing.T) {
 
 		// 500 for insertion failure
 		{
-			"{\"address\": \"0x0334995e2CFc53CF785C554839F6e845A3A09e79\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoopErr,
 			http.StatusInternalServerError,
@@ -86,19 +101,28 @@ func TestControler(t *testing.T) {
 
 		// 200
 		{
-			"{\"address\": \"zil1kkgy7ph9cfzalpg3ygwryk5prqd432jc48yz5k\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "zil1kkgy7ph9cfzalpg3ygwryk5prqd432jc48yz5k",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			http.StatusOK,
 		},
 		{
-			"{\"address\": \"0334995e2CFc53CF785C554839F6e845A3A09e79\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "0334995e2CFc53CF785C554839F6e845A3A09e79",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			http.StatusOK,
 		},
 		{
-			"{\"address\": \"0x0334995e2CFc53CF785C554839F6e845A3A09e79\",\"token\": \"test\"}",
+			BodyParams{
+				Address: "0x0334995e2CFc53CF785C554839F6e845A3A09e79",
+				Token:   "test",
+			},
 			verifyTokenNoop,
 			insertNoop,
 			http.StatusOK,
@@ -116,10 +140,15 @@ func TestControler(t *testing.T) {
 		testServer := httptest.NewServer(setupServer())
 		defer testServer.Close()
 
+		out, err := json.Marshal(testCase.body)
+		if err != nil {
+			panic(err)
+		}
+
 		resp, err := http.Post(
 			testServer.URL+"/test",
 			"application/json",
-			bytes.NewBufferString(testCase.body),
+			bytes.NewBufferString(string(out)),
 		)
 		if err != nil {
 			t.Errorf("%v", err)
