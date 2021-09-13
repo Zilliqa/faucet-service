@@ -16,4 +16,4 @@ build:
 	CGO_ENABLED=0 GOOS=linux go build -o $(GOBIN)/faucet-service ./cmd
 
 start:
-	make build && docker build -t faucet-service . -f Dockerfile && docker run -p 8080:8080 --env-file ./.env faucet-service
+	docker build -t faucet-service . -f Dockerfile && docker run -p 8080:8080 --env-file ./.env faucet-service
