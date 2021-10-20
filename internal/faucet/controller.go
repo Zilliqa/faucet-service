@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/Zilliqa/gozilliqa-sdk/bech32"
+	"github.com/Zilliqa/gozilliqa-sdk/util"
 	"github.com/Zilliqa/gozilliqa-sdk/validator"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -63,6 +64,7 @@ func Controller(
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid address"})
 			return
 		}
+		address = util.ToCheckSumAddress(address)
 
 		reqLogger := log.WithFields(
 			log.Fields{
@@ -83,7 +85,7 @@ func Controller(
 		item := FundRequest{
 			ID:        uuid.New().String(),
 			CreatedAt: time.Now().Format(time.RFC3339),
-			Address:   body.Address,
+			Address:   address,
 			TxID:      "",
 		}
 
