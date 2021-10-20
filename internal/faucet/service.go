@@ -258,6 +258,7 @@ func (mdb *MDB) Send(
 	} else {
 		txIDs, err := sendBatchTx(reqsWithoutTxID)
 		if err != nil {
+			txn.Abort()
 			return count, err
 		}
 		for i, cur := range reqsWithoutTxID {
