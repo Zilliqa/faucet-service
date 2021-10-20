@@ -72,6 +72,7 @@ func (mdb *MDB) Insert(item *FundRequest) error {
 	txn := db.Txn(true)
 
 	if err := txn.Insert(tableName, item); err != nil {
+		txn.Abort()
 		return err
 	}
 
@@ -121,6 +122,7 @@ func (mdb *MDB) Confirm(
 	txn := db.Txn(true)
 	it, err := txn.Get(tableName, "id")
 	if err != nil {
+		txn.Abort()
 		return count, err
 	}
 
